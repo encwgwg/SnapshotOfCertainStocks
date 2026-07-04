@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Snapshot of certain stocks</title>
+</head>
+<body>
+    <h1>Snapshot of certain stocks</h1>
+
+    <table>
+        <tr>
+            <td valign="top">
+                <h2>Stock list</h2>
+                <ul>
+                    {% for stock in stocks %}
+                        <li>{{ stock.symbol }}</li>
+                    {% endfor %}
+                </ul>
+            </td>
+            <td valign="top">
+                <h2>Stock information</h2>
+                {% for stock in stocks %}
+                    <section>
+                        <h3>{{ stock.symbol }} - {{ stock.name }}</h3>
+                        <p><strong>Current price:</strong> {{ stock.current_price }}</p>
+                        <p><strong>General performance:</strong> {{ stock.general_performance }}</p>
+                        <p><strong>Latest news:</strong> {{ stock.latest_news }}</p>
+                        <p><strong>Recommendation:</strong> {{ stock.recommendation }}</p>
+                    </section>
+                {% endfor %}
+            </td>
+        </tr>
+    </table>
+</body>
+</html>
