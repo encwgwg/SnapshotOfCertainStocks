@@ -9,6 +9,7 @@ def stock_snapshot():
     stocks = [
         {
             "symbol": "AC.TO",
+            "anchor": "stock-ac-to",
             "name": "Air Canada",
             "current_price": "To be updated",
             "general_performance": "To be updated with recent performance details.",
@@ -17,6 +18,7 @@ def stock_snapshot():
         },
         {
             "symbol": "ZSP.TO",
+            "anchor": "stock-zsp-to",
             "name": "BMO S&P 500 Index ETF",
             "current_price": "To be updated",
             "general_performance": "To be updated with recent performance details.",
@@ -25,6 +27,7 @@ def stock_snapshot():
         },
         {
             "symbol": "ASTS",
+            "anchor": "stock-asts",
             "name": "AST SpaceMobile",
             "current_price": "To be updated",
             "general_performance": "To be updated with recent performance details.",
@@ -33,6 +36,7 @@ def stock_snapshot():
         },
         {
             "symbol": "SPCX.TO",
+            "anchor": "stock-spcx-to",
             "name": "SPAC and New Issue ETF",
             "current_price": "To be updated",
             "general_performance": "To be updated with recent performance details.",
