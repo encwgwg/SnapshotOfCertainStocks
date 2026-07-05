@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Snapshot of certain stocks</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="min-h-screen bg-slate-950 text-slate-100">
+    <main class="mx-auto max-w-7xl px-6 py-10">
+        <header class="mb-10 rounded-3xl bg-gradient-to-r from-cyan-500 via-blue-600 to-indigo-700 p-8 shadow-2xl shadow-blue-950/50">
+            <p class="mb-2 text-sm font-semibold uppercase tracking-[0.35em] text-cyan-100">Market watchlist</p>
+            <h1 class="text-4xl font-bold tracking-tight text-white md:text-5xl">Snapshot of certain stocks</h1>
+            <p class="mt-4 max-w-3xl text-lg text-blue-50">A quick, editable dashboard for selected stocks with prices, performance notes, news, and a simple buy/hold/sell view.</p>
+        </header>
+
+        <div class="grid gap-8 lg:grid-cols-[280px_1fr]">
+            <aside class="lg:sticky lg:top-6 lg:self-start">
+                <div class="rounded-2xl border border-slate-800 bg-slate-900/80 p-6 shadow-xl shadow-slate-950/40">
+                    <h2 class="text-xl font-semibold text-white">Stock list</h2>
+                    <p class="mt-2 text-sm text-slate-400">Click a symbol to jump to its details.</p>
+                    <nav class="mt-6">
+                        <ul class="space-y-3">
+                            {% for stock in stocks %}
+                                <li>
+                                    <a href="#{{ stock.anchor }}" class="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-950/70 px-4 py-3 font-semibold text-cyan-200 transition hover:border-cyan-400 hover:bg-cyan-400/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-cyan-300">
+                                        <span>{{ stock.symbol }}</span>
+                                        <span aria-hidden="true">→</span>
+                                    </a>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    </nav>
+
+                    <div class="mt-8 border-t border-slate-800 pt-6">
+                        <button id="refresh-button" type="button" class="flex w-full items-center justify-center gap-3 rounded-xl bg-cyan-500 px-4 py-3 font-semibold text-slate-950 transition hover:bg-cyan-300 focus:outline-none focus:ring-2 focus:ring-cyan-200 disabled:cursor-not-allowed disabled:opacity-70">
+                            <span>Refresh</span>
+                            <span id="refresh-spinner" class="hidden h-5 w-5 animate-spin rounded-full border-2 border-slate-950 border-t-transparent" aria-hidden="true"></span>
+                        </button>
+                        <p id="refresh-status" class="mt-3 text-sm text-slate-400">Last refreshed: {{ refreshed_at }}</p>
+                    </div>
+                </div>
+            </aside>
+
+            <section class="space-y-6" aria-labelledby="stock-information-heading">
+                <div class="flex items-end justify-between gap-4">
+                    <div>
+                        <p class="text-sm font-semibold uppercase tracking-[0.25em] text-cyan-300">Details</p>
+                        <h2 id="stock-information-heading" class="mt-1 text-3xl font-bold text-white">Stock information</h2>
+                    </div>
+                </div>
+
+                {% for stock in stocks %}
+                    <article id="{{ stock.anchor }}" data-stock-card="{{ stock.symbol }}" class="scroll-mt-8 rounded-2xl border border-slate-800 bg-slate-900/80 p-6 shadow-xl shadow-slate-950/40">
+                        <div class="flex flex-col gap-3 border-b border-slate-800 pb-5 sm:flex-row sm:items-center sm:justify-between">
+                            <div>
+                                <p class="text-sm font-semibold uppercase tracking-[0.25em] text-cyan-300">{{ stock.symbol }}</p>
+                                <h3 class="mt-1 text-2xl font-bold text-white">{{ stock.name }}</h3>
+                            </div>
+                        </div>
+
+                        <dl class="mt-6 grid gap-4 md:grid-cols-2">
+                            <div class="rounded-xl bg-slate-950/70 p-4">
+                                <dt class="text-sm font-medium text-slate-400">Current price</dt>
+                                <dd class="mt-2 text-lg font-semibold text-white" data-stock-field="current_price">{{ stock.current_price }}</dd>
+                            </div>
+                            <div class="rounded-xl bg-slate-950/70 p-4">
+                                <dt class="text-sm font-medium text-slate-400">Recommendation</dt>
+                                <dd class="mt-2 text-lg font-semibold text-white" data-stock-field="recommendation">{{ stock.recommendation }}</dd>
+                            </div>
+                            <div class="rounded-xl bg-slate-950/70 p-4 md:col-span-2">
+                                <dt class="text-sm font-medium text-slate-400">General performance</dt>
+                                <dd class="mt-2 text-slate-200" data-stock-field="general_performance">{{ stock.general_performance }}</dd>
+                            </div>
+                            <div class="rounded-xl bg-slate-950/70 p-4 md:col-span-2">
+                                <dt class="text-sm font-medium text-slate-400">Latest news</dt>
+                                <dd class="mt-2 text-slate-200">
+                                    <ul class="list-disc space-y-2 pl-5" data-stock-field="latest_news">
+                                        {% for news_item in stock.latest_news %}
+                                            <li>{{ news_item }}</li>
+                                        {% endfor %}
+                                    </ul>
+                                </dd>
+                            </div>
+                        </dl>
+                    </article>
+                {% endfor %}
+            </section>
+        </div>
+    </main>
+    <script>
+        const refreshButton = document.getElementById("refresh-button");
+        const refreshSpinner = document.getElementById("refresh-spinner");
+        const refreshStatus = document.getElementById("refresh-status");
+
+        function setRefreshLoading(isLoading) {
+            refreshButton.disabled = isLoading;
+            refreshSpinner.classList.toggle("hidden", !isLoading);
+            refreshStatus.textContent = isLoading ? "Refreshing stock information..." : refreshStatus.textContent;
+        }
+
+        function updateStockCard(stock) {
+            const stockCard = document.querySelector(`[data-stock-card="${stock.symbol}"]`);
+            if (!stockCard) {
+                return;
+            }
+
+            stockCard.querySelector('[data-stock-field="current_price"]').textContent = stock.current_price;
+            stockCard.querySelector('[data-stock-field="recommendation"]').textContent = stock.recommendation;
+            stockCard.querySelector('[data-stock-field="general_performance"]').textContent = stock.general_performance;
+
+            const latestNewsList = stockCard.querySelector('[data-stock-field="latest_news"]');
+            latestNewsList.innerHTML = "";
+            stock.latest_news.forEach((newsItem) => {
+                const listItem = document.createElement("li");
+                listItem.textContent = newsItem;
+                latestNewsList.appendChild(listItem);
+            });
+        }
+
+        refreshButton.addEventListener("click", async () => {
+            setRefreshLoading(true);
+
+            try {
+                const response = await fetch("/refresh", { method: "POST" });
+                if (!response.ok) {
+                    throw new Error("Refresh request failed");
+                }
+
+                const data = await response.json();
+                data.stocks.forEach(updateStockCard);
+                refreshStatus.textContent = `Last refreshed: ${data.refreshed_at}`;
+            } catch (error) {
+                refreshStatus.textContent = "Refresh failed. Please try again.";
+            } finally {
+                setRefreshLoading(false);
+            }
+        });
+    </script>
+</body>
+</html>
