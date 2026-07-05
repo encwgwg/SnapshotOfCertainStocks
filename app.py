@@ -23,7 +23,7 @@ def stock_snapshot():
             "current_price": "CA$117.32 (last close, Jul 3, 2026)",
             "general_performance": "To be updated with recent performance details.",
             "latest_news": "To be updated with the latest relevant news.",
-            "recommendation": "Hold",
+            "recommendation": "Buy",
         },
         {
             "symbol": "ASTS",
@@ -32,7 +32,7 @@ def stock_snapshot():
             "current_price": "US$85.13 (last close, Jul 2, 2026)",
             "general_performance": "To be updated with recent performance details.",
             "latest_news": "To be updated with the latest relevant news.",
-            "recommendation": "Hold",
+            "recommendation": "Sell",
         },
         {
             "symbol": "SPCX.TO",
@@ -41,7 +41,7 @@ def stock_snapshot():
             "current_price": "CA$27.34 (last close, Jul 3, 2026)",
             "general_performance": "To be updated with recent performance details.",
             "latest_news": "To be updated with the latest relevant news.",
-            "recommendation": "Hold",
+            "recommendation": "Buy",
         },
     ]
     return render_template("index.html", stocks=stocks)
