@@ -1,7 +1,7 @@
 from copy import deepcopy
 from datetime import datetime, timezone
 
-from flask import Flask, jsonify, render_template
+from flask import Flask, jsonify, render_template, request
 
 app = Flask(__name__)
 
@@ -62,6 +62,31 @@ STOCKS = [
 ]
 
 
+def build_stock_anchor(symbol):
+    """Create a safe in-page anchor for a stock symbol."""
+    safe_symbol = "".join(character.lower() if character.isalnum() else "-" for character in symbol)
+    return f"stock-{safe_symbol.strip('-')}"
+
+
+def create_placeholder_stock(symbol):
+    """Create a new stock entry that can be filled by future refreshes."""
+    return {
+        "symbol": symbol,
+        "anchor": build_stock_anchor(symbol),
+        "name": symbol,
+        "current_price": "To be updated on refresh",
+        "general_performance": "To be updated after market information is gathered.",
+        "latest_news": ["To be updated with the latest relevant news."],
+        "recommendation": "Hold",
+    }
+
+
+def find_stock(symbol):
+    """Find an existing stock entry by symbol, ignoring case."""
+    normalized_symbol = symbol.upper()
+    return next((stock for stock in STOCKS if stock["symbol"].upper() == normalized_symbol), None)
+
+
 def gather_stock_information():
     """Return the latest maintained stock snapshot data for page refreshes."""
     refreshed_stocks = deepcopy(STOCKS)
@@ -85,6 +110,25 @@ def refresh_stock_snapshot():
     """Provide refreshed stock data for the dashboard refresh button."""
     stocks, refreshed_at = gather_stock_information()
     return jsonify({"stocks": stocks, "refreshed_at": refreshed_at})
+
+
+@app.post("/stocks")
+def add_stock():
+    """Add a new stock symbol to the in-memory watchlist."""
+    request_data = request.get_json(silent=True) if request.is_json else {}
+    symbol = request_data.get("symbol", "") if request_data else ""
+    normalized_symbol = symbol.strip().upper()
+
+    if not normalized_symbol:
+        return jsonify({"error": "Stock symbol is required."}), 400
+
+    existing_stock = find_stock(normalized_symbol)
+    if existing_stock:
+        return jsonify({"stock": existing_stock, "added": False})
+
+    new_stock = create_placeholder_stock(normalized_symbol)
+    STOCKS.append(new_stock)
+    return jsonify({"stock": new_stock, "added": True}), 201
 
 
 if __name__ == "__main__":
