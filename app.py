@@ -62,21 +62,6 @@ STOCKS = [
 ]
 
 
-STOCK_REFRESH_DATA = {
-    "RCI-B.TO": {
-        "name": "Rogers Communications Inc.",
-        "current_price": "CA$45.08 (last close, Jul 3, 2026)",
-        "general_performance": "Short term has been weak: RCI.B is down about 14% over the past month and down about 13% year to date, while the one-year return is only slightly positive. Mid/long term remains pressured versus prior highs, but analysts still see upside. Business momentum is mixed: Q1 2026 showed service revenue and EBITDA growth plus lower capex/free-cash-flow improvement, but telecom pricing pressure and debt remain concerns.",
-        "latest_news": [
-            "Rogers plans to release Q2 2026 results on July 22, 2026, before North American markets open.",
-            "Q1 2026 commentary highlighted service revenue and EBITDA growth, reduced capex and improved free cash flow.",
-            "Rogers donated CA$1M to the 2026 Rogers Charity Classic in June to support children's charities across Alberta.",
-        ],
-        "recommendation": "Buy",
-    }
-}
-
-
 def build_stock_anchor(symbol):
     """Create a safe in-page anchor for a stock symbol."""
     safe_symbol = "".join(character.lower() if character.isalnum() else "-" for character in symbol)
@@ -96,22 +81,10 @@ def create_placeholder_stock(symbol):
     }
 
 
-def normalize_stock_symbol(symbol):
-    """Normalize symbols so refresh data can match newly added entries."""
-    return symbol.strip().upper()
-
-
 def find_stock(symbol):
     """Find an existing stock entry by symbol, ignoring case."""
-    normalized_symbol = normalize_stock_symbol(symbol)
-    return next((stock for stock in STOCKS if normalize_stock_symbol(stock["symbol"]) == normalized_symbol), None)
-
-
-def apply_refresh_data(stock):
-    """Update a stock with any known refreshed market information."""
-    refreshed_data = STOCK_REFRESH_DATA.get(normalize_stock_symbol(stock["symbol"]))
-    if refreshed_data:
-        stock.update(deepcopy(refreshed_data))
+    normalized_symbol = symbol.upper()
+    return next((stock for stock in STOCKS if stock["symbol"].upper() == normalized_symbol), None)
 
 
 def gather_stock_information():
@@ -120,7 +93,6 @@ def gather_stock_information():
     refreshed_at = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
 
     for stock in refreshed_stocks:
-        apply_refresh_data(stock)
         stock["last_refreshed"] = refreshed_at
 
     return refreshed_stocks, refreshed_at
@@ -145,7 +117,7 @@ def add_stock():
     """Add a new stock symbol to the in-memory watchlist."""
     request_data = request.get_json(silent=True) if request.is_json else {}
     symbol = request_data.get("symbol", "") if request_data else ""
-    normalized_symbol = normalize_stock_symbol(symbol)
+    normalized_symbol = symbol.strip().upper()
 
     if not normalized_symbol:
         return jsonify({"error": "Stock symbol is required."}), 400
