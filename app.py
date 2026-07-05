@@ -1,5 +1,8 @@
 from copy import deepcopy
 from datetime import datetime, timezone
+import json
+from json import JSONDecodeError
+from pathlib import Path
 from xml.etree import ElementTree
 
 import requests
@@ -9,6 +12,7 @@ app = Flask(__name__)
 
 REQUEST_HEADERS = {"User-Agent": "Mozilla/5.0"}
 REQUEST_TIMEOUT = 8
+WATCHLIST_FILE = Path(__file__).with_name("watchlist_data.json")
 
 
 STOCKS = [
@@ -252,6 +256,59 @@ def find_stock(symbol):
     return next((stock for stock in STOCKS if normalize_stock_symbol(stock["symbol"]) == normalized_symbol), None)
 
 
+def prepare_saved_stock(stock):
+    """Validate and normalize a stock entry loaded from disk."""
+    symbol = normalize_stock_symbol(str(stock.get("symbol", "")))
+    if not symbol:
+        return None
+
+    prepared_stock = create_placeholder_stock(symbol)
+    prepared_stock.update(stock)
+    prepared_stock["symbol"] = symbol
+    prepared_stock["anchor"] = stock.get("anchor") or build_stock_anchor(symbol)
+    return prepared_stock
+
+
+def load_saved_stocks():
+    """Load the persisted watchlist so added symbols survive restarts."""
+    if not WATCHLIST_FILE.exists():
+        return
+
+    try:
+        saved_stocks = json.loads(WATCHLIST_FILE.read_text())
+    except (OSError, JSONDecodeError):
+        return
+
+    if not isinstance(saved_stocks, list):
+        return
+
+    loaded_stocks = []
+    seen_symbols = set()
+    for stock in saved_stocks:
+        if not isinstance(stock, dict):
+            continue
+        prepared_stock = prepare_saved_stock(stock)
+        if not prepared_stock or prepared_stock["symbol"] in seen_symbols:
+            continue
+        loaded_stocks.append(prepared_stock)
+        seen_symbols.add(prepared_stock["symbol"])
+
+    if loaded_stocks:
+        STOCKS[:] = loaded_stocks
+
+
+def save_stocks(stocks=None):
+    """Persist the current watchlist to disk."""
+    stocks_to_save = stocks if stocks is not None else STOCKS
+    WATCHLIST_FILE.write_text(json.dumps(stocks_to_save, indent=2))
+
+
+def replace_stocks(stocks):
+    """Replace the in-memory watchlist and persist it."""
+    STOCKS[:] = deepcopy(stocks)
+    save_stocks()
+
+
 def apply_refresh_data(stock):
     """Update a stock with refreshed market information."""
     refreshed_stock = fetch_market_information(stock["symbol"], stock)
@@ -270,6 +327,9 @@ def gather_stock_information():
     return refreshed_stocks, refreshed_at
 
 
+load_saved_stocks()
+
+
 @app.route("/")
 def stock_snapshot():
     """Render a simple stock snapshot page with manually maintained data."""
@@ -281,6 +341,7 @@ def stock_snapshot():
 def refresh_stock_snapshot():
     """Provide refreshed stock data for the dashboard refresh button."""
     stocks, refreshed_at = gather_stock_information()
+    replace_stocks(stocks)
     return jsonify({"stocks": stocks, "refreshed_at": refreshed_at})
 
 
@@ -300,6 +361,7 @@ def add_stock():
 
     new_stock = create_placeholder_stock(normalized_symbol)
     STOCKS.append(new_stock)
+    save_stocks()
     return jsonify({"stock": new_stock, "added": True}), 201
 
 
