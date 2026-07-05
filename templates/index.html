@@ -66,7 +66,13 @@
                             </div>
                             <div class="rounded-xl bg-slate-950/70 p-4 md:col-span-2">
                                 <dt class="text-sm font-medium text-slate-400">Latest news</dt>
-                                <dd class="mt-2 text-slate-200">{{ stock.latest_news }}</dd>
+                                <dd class="mt-2 text-slate-200">
+                                    <ul class="list-disc space-y-2 pl-5">
+                                        {% for news_item in stock.latest_news %}
+                                            <li>{{ news_item }}</li>
+                                        {% endfor %}
+                                    </ul>
+                                </dd>
                             </div>
                         </dl>
                     </article>
