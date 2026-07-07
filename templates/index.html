@@ -34,12 +34,12 @@
                     <nav class="mt-5">
                         <ul id="stock-list" class="space-y-3">
                             {% for stock in stocks %}
-                                <li data-stock-list-item="{{ stock.symbol }}" class="group flex items-center gap-2 rounded-2xl border border-slate-800/80 bg-slate-950/50 p-1.5 shadow-lg shadow-slate-950/20 transition hover:-translate-y-0.5 hover:border-cyan-400/40 hover:bg-slate-900/80">
-                                    <a href="#{{ stock.anchor }}" data-stock-link="{{ stock.symbol }}" class="flex min-w-0 flex-1 items-center justify-between rounded-xl px-3 py-2.5 font-semibold text-cyan-100 transition hover:text-white focus:outline-none focus:ring-2 focus:ring-cyan-300">
-                                        <span class="truncate">{{ stock.symbol }}</span>
-                                        <span class="ml-2 rounded-full bg-cyan-400/10 px-2 py-1 text-xs text-cyan-200 transition group-hover:bg-cyan-400/20" aria-hidden="true">View →</span>
+                                <li data-stock-list-item="{{ stock.symbol }}" class="flex items-center gap-2">
+                                    <a href="#{{ stock.anchor }}" data-stock-link="{{ stock.symbol }}" class="flex flex-1 items-center justify-between rounded-xl border border-slate-800 bg-slate-950/70 px-4 py-3 font-semibold text-cyan-200 transition hover:border-cyan-400 hover:bg-cyan-400/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-cyan-300">
+                                        <span>{{ stock.symbol }}</span>
+                                        <span aria-hidden="true">→</span>
                                     </a>
-                                    <button type="button" data-delete-stock="{{ stock.symbol }}" class="rounded-lg bg-red-500/90 px-2.5 py-1.5 text-xs font-semibold text-white shadow-sm shadow-red-950/30 transition hover:bg-red-400 focus:outline-none focus:ring-2 focus:ring-red-300 disabled:cursor-not-allowed disabled:opacity-70">Delete</button>
+                                    <button type="button" data-delete-stock="{{ stock.symbol }}" class="rounded-xl bg-red-600 px-3 py-3 text-sm font-semibold text-white transition hover:bg-red-500 focus:outline-none focus:ring-2 focus:ring-red-300">Delete</button>
                                 </li>
                             {% endfor %}
                         </ul>
@@ -102,12 +102,12 @@
         </div>
     </main>
     <template id="stock-list-item-template">
-        <li class="group flex items-center gap-2 rounded-2xl border border-slate-800/80 bg-slate-950/50 p-1.5 shadow-lg shadow-slate-950/20 transition hover:-translate-y-0.5 hover:border-cyan-400/40 hover:bg-slate-900/80">
-            <a class="flex min-w-0 flex-1 items-center justify-between rounded-xl px-3 py-2.5 font-semibold text-cyan-100 transition hover:text-white focus:outline-none focus:ring-2 focus:ring-cyan-300">
-                <span class="truncate" data-template-field="symbol"></span>
-                <span class="ml-2 rounded-full bg-cyan-400/10 px-2 py-1 text-xs text-cyan-200 transition group-hover:bg-cyan-400/20" aria-hidden="true">View →</span>
+        <li class="flex items-center gap-2">
+            <a class="flex flex-1 items-center justify-between rounded-xl border border-slate-800 bg-slate-950/70 px-4 py-3 font-semibold text-cyan-200 transition hover:border-cyan-400 hover:bg-cyan-400/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-cyan-300">
+                <span data-template-field="symbol"></span>
+                <span aria-hidden="true">→</span>
             </a>
-            <button type="button" data-delete-stock class="rounded-lg bg-red-500/90 px-2.5 py-1.5 text-xs font-semibold text-white shadow-sm shadow-red-950/30 transition hover:bg-red-400 focus:outline-none focus:ring-2 focus:ring-red-300 disabled:cursor-not-allowed disabled:opacity-70">Delete</button>
+            <button type="button" data-delete-stock class="rounded-xl bg-red-600 px-3 py-3 text-sm font-semibold text-white transition hover:bg-red-500 focus:outline-none focus:ring-2 focus:ring-red-300">Delete</button>
         </li>
     </template>
 
