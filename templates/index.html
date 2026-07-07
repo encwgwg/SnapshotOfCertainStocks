@@ -28,11 +28,12 @@
                     <nav class="mt-6">
                         <ul id="stock-list" class="space-y-3">
                             {% for stock in stocks %}
-                                <li>
-                                    <a href="#{{ stock.anchor }}" data-stock-link="{{ stock.symbol }}" class="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-950/70 px-4 py-3 font-semibold text-cyan-200 transition hover:border-cyan-400 hover:bg-cyan-400/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-cyan-300">
+                                <li data-stock-list-item="{{ stock.symbol }}" class="flex items-center gap-2">
+                                    <a href="#{{ stock.anchor }}" data-stock-link="{{ stock.symbol }}" class="flex flex-1 items-center justify-between rounded-xl border border-slate-800 bg-slate-950/70 px-4 py-3 font-semibold text-cyan-200 transition hover:border-cyan-400 hover:bg-cyan-400/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-cyan-300">
                                         <span>{{ stock.symbol }}</span>
                                         <span aria-hidden="true">→</span>
                                     </a>
+                                    <button type="button" data-delete-stock="{{ stock.symbol }}" class="rounded-xl bg-red-600 px-3 py-3 text-sm font-semibold text-white transition hover:bg-red-500 focus:outline-none focus:ring-2 focus:ring-red-300">Delete</button>
                                 </li>
                             {% endfor %}
                         </ul>
@@ -95,11 +96,12 @@
         </div>
     </main>
     <template id="stock-list-item-template">
-        <li>
-            <a class="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-950/70 px-4 py-3 font-semibold text-cyan-200 transition hover:border-cyan-400 hover:bg-cyan-400/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-cyan-300">
+        <li class="flex items-center gap-2">
+            <a class="flex flex-1 items-center justify-between rounded-xl border border-slate-800 bg-slate-950/70 px-4 py-3 font-semibold text-cyan-200 transition hover:border-cyan-400 hover:bg-cyan-400/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-cyan-300">
                 <span data-template-field="symbol"></span>
                 <span aria-hidden="true">→</span>
             </a>
+            <button type="button" data-delete-stock class="rounded-xl bg-red-600 px-3 py-3 text-sm font-semibold text-white transition hover:bg-red-500 focus:outline-none focus:ring-2 focus:ring-red-300">Delete</button>
         </li>
     </template>
 
@@ -162,20 +164,24 @@
         }
 
         function addStockToList(stock) {
-            if (document.querySelector(`[data-stock-link="${stock.symbol}"]`)) {
+            if (document.querySelector(stockAttributeSelector("data-stock-link", stock.symbol))) {
                 return;
             }
 
             const listItem = stockListItemTemplate.content.cloneNode(true);
+            const listItemElement = listItem.querySelector("li");
             const link = listItem.querySelector("a");
+            const deleteButton = listItem.querySelector("[data-delete-stock]");
+            listItemElement.dataset.stockListItem = stock.symbol;
             link.href = `#${stock.anchor}`;
             link.dataset.stockLink = stock.symbol;
+            deleteButton.dataset.deleteStock = stock.symbol;
             listItem.querySelector('[data-template-field="symbol"]').textContent = stock.symbol;
             stockList.appendChild(listItem);
         }
 
         function addStockCard(stock) {
-            if (document.querySelector(`[data-stock-card="${stock.symbol}"]`)) {
+            if (document.querySelector(stockAttributeSelector("data-stock-card", stock.symbol))) {
                 return;
             }
 
@@ -189,8 +195,12 @@
             updateStockCard(stock);
         }
 
+        function stockAttributeSelector(attributeName, symbol) {
+            return `[${attributeName}="${CSS.escape(symbol)}"]`;
+        }
+
         function updateStockCard(stock) {
-            const stockCard = document.querySelector(`[data-stock-card="${stock.symbol}"]`);
+            const stockCard = document.querySelector(stockAttributeSelector("data-stock-card", stock.symbol));
             if (!stockCard) {
                 return;
             }
@@ -201,6 +211,32 @@
 
             const latestNewsList = stockCard.querySelector('[data-stock-field="latest_news"]');
             renderLatestNews(latestNewsList, stock.latest_news);
+        }
+
+        function removeStockFromPage(symbol) {
+            document.querySelector(stockAttributeSelector("data-stock-list-item", symbol))?.remove();
+            document.querySelector(stockAttributeSelector("data-stock-card", symbol))?.remove();
+        }
+
+        async function deleteStock(symbol, deleteButton) {
+            deleteButton.disabled = true;
+            deleteButton.textContent = "Deleting...";
+
+            try {
+                const response = await fetch(`/stocks/${encodeURIComponent(symbol)}`, { method: "DELETE" });
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || "Unable to delete stock.");
+                }
+
+                removeStockFromPage(data.symbol);
+                addStockStatus.textContent = `${data.symbol} deleted permanently from the stock list.`;
+            } catch (error) {
+                deleteButton.disabled = false;
+                deleteButton.textContent = "Delete";
+                addStockStatus.textContent = error.message;
+            }
         }
 
         addStockForm.addEventListener("submit", async (event) => {
@@ -231,6 +267,16 @@
             } catch (error) {
                 addStockStatus.textContent = error.message;
             }
+        });
+
+        stockList.addEventListener("click", (event) => {
+            const deleteButton = event.target.closest("[data-delete-stock]");
+
+            if (!deleteButton) {
+                return;
+            }
+
+            deleteStock(deleteButton.dataset.deleteStock, deleteButton);
         });
 
         refreshButton.addEventListener("click", async () => {
