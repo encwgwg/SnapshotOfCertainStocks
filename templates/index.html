@@ -14,18 +14,24 @@
             <p class="mt-4 max-w-3xl text-lg text-blue-50">A quick, editable dashboard for selected stocks with prices, performance notes, news, and a simple buy/hold/sell view.</p>
         </header>
 
-        <div class="grid gap-8 lg:grid-cols-[280px_1fr]">
+        <div class="grid gap-8 lg:grid-cols-[320px_1fr]">
             <aside class="lg:sticky lg:top-6 lg:self-start">
-                <div class="rounded-2xl border border-slate-800 bg-slate-900/80 p-6 shadow-xl shadow-slate-950/40">
-                    <h2 class="text-xl font-semibold text-white">Stock list</h2>
-                    <form id="add-stock-form" class="mt-5 space-y-3">
+                <div class="overflow-hidden rounded-3xl border border-cyan-400/20 bg-gradient-to-b from-slate-900 via-slate-900/95 to-slate-950 p-6 shadow-2xl shadow-cyan-950/30">
+                    <div class="flex items-center gap-3">
+                        <span class="flex h-10 w-10 items-center justify-center rounded-2xl bg-cyan-400/10 text-xl shadow-inner shadow-cyan-400/10" aria-hidden="true">📈</span>
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-[0.25em] text-cyan-300">Watchlist</p>
+                            <h2 class="text-xl font-semibold text-white">Stock list</h2>
+                        </div>
+                    </div>
+                    <form id="add-stock-form" class="mt-6 space-y-3 rounded-2xl border border-slate-800/80 bg-slate-950/40 p-4">
                         <label for="stock-symbol-input" class="block text-sm font-medium text-slate-300">Add stock symbol</label>
-                        <input id="stock-symbol-input" name="symbol" type="text" placeholder="e.g. MSFT" class="w-full rounded-xl border border-slate-700 bg-slate-950/70 px-4 py-3 text-sm text-white placeholder:text-slate-500 focus:border-cyan-300 focus:outline-none focus:ring-2 focus:ring-cyan-300">
-                        <button type="submit" class="w-full rounded-xl border border-cyan-400 px-4 py-3 font-semibold text-cyan-200 transition hover:bg-cyan-400/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-cyan-300">Add stock</button>
+                        <input id="stock-symbol-input" name="symbol" type="text" placeholder="e.g. MSFT" class="w-full rounded-xl border border-slate-700 bg-slate-950/70 px-4 py-3 text-sm text-white placeholder:text-slate-500 shadow-inner shadow-slate-950/40 focus:border-cyan-300 focus:outline-none focus:ring-2 focus:ring-cyan-300">
+                        <button type="submit" class="w-full rounded-xl bg-cyan-400 px-4 py-3 font-semibold text-slate-950 shadow-lg shadow-cyan-950/30 transition hover:bg-cyan-300 focus:outline-none focus:ring-2 focus:ring-cyan-200">Add stock</button>
                         <p id="add-stock-status" class="text-sm text-slate-400"></p>
                     </form>
-                    <p class="mt-6 text-sm text-slate-400">Click a symbol to jump to its details.</p>
-                    <nav class="mt-6">
+                    <p class="mt-5 rounded-2xl border border-cyan-400/10 bg-cyan-400/5 px-4 py-3 text-sm text-slate-300">Click a symbol to jump to its details, or use the small red button to remove it permanently.</p>
+                    <nav class="mt-5">
                         <ul id="stock-list" class="space-y-3">
                             {% for stock in stocks %}
                                 <li data-stock-list-item="{{ stock.symbol }}" class="flex items-center gap-2">
@@ -39,7 +45,7 @@
                         </ul>
                     </nav>
 
-                    <div class="mt-8 border-t border-slate-800 pt-6">
+                    <div class="mt-8 border-t border-slate-800/80 pt-6">
                         <button id="refresh-button" type="button" class="flex w-full items-center justify-center gap-3 rounded-xl bg-cyan-500 px-4 py-3 font-semibold text-slate-950 transition hover:bg-cyan-300 focus:outline-none focus:ring-2 focus:ring-cyan-200 disabled:cursor-not-allowed disabled:opacity-70">
                             <span>Refresh</span>
                             <span id="refresh-spinner" class="hidden h-5 w-5 animate-spin rounded-full border-2 border-slate-950 border-t-transparent" aria-hidden="true"></span>
