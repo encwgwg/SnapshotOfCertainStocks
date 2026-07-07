@@ -153,6 +153,65 @@
         const refreshButton = document.getElementById("refresh-button");
         const refreshSpinner = document.getElementById("refresh-spinner");
         const refreshStatus = document.getElementById("refresh-status");
+        const watchlistStorageKey = "snapshot-of-certain-stocks.watchlist";
+        let currentStocks = {{ stocks|tojson }};
+
+        function saveBrowserWatchlist() {
+            localStorage.setItem(watchlistStorageKey, JSON.stringify(currentStocks));
+        }
+
+        function loadBrowserWatchlist() {
+            try {
+                const savedStocks = JSON.parse(localStorage.getItem(watchlistStorageKey));
+                return Array.isArray(savedStocks) && savedStocks.length > 0 ? savedStocks : null;
+            } catch (error) {
+                return null;
+            }
+        }
+
+        function replacePageWatchlist(stocks) {
+            document.querySelectorAll("[data-stock-list-item]").forEach((item) => item.remove());
+            document.querySelectorAll("[data-stock-card]").forEach((card) => card.remove());
+            stocks.forEach((stock) => {
+                addStockToList(stock);
+                addStockCard(stock);
+            });
+        }
+
+        async function syncServerWatchlist(stocks) {
+            const response = await fetch("/stocks", {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ stocks }),
+            });
+
+            if (!response.ok) {
+                throw new Error("Unable to sync saved watchlist to this deployment.");
+            }
+
+            const data = await response.json();
+            currentStocks = data.stocks;
+            saveBrowserWatchlist();
+            replacePageWatchlist(currentStocks);
+        }
+
+        async function restoreBrowserWatchlist() {
+            const savedStocks = loadBrowserWatchlist();
+            if (!savedStocks) {
+                saveBrowserWatchlist();
+                return;
+            }
+
+            currentStocks = savedStocks;
+            replacePageWatchlist(currentStocks);
+
+            try {
+                await syncServerWatchlist(currentStocks);
+                addStockStatus.textContent = "Restored your saved stock list for this deployment.";
+            } catch (error) {
+                addStockStatus.textContent = error.message;
+            }
+        }
 
         function setRefreshLoading(isLoading) {
             refreshButton.disabled = isLoading;
@@ -236,6 +295,8 @@
                     throw new Error(data.error || "Unable to delete stock.");
                 }
 
+                currentStocks = currentStocks.filter((stock) => stock.symbol !== data.symbol);
+                saveBrowserWatchlist();
                 removeStockFromPage(data.symbol);
                 addStockStatus.textContent = `${data.symbol} deleted permanently from the stock list.`;
             } catch (error) {
@@ -266,6 +327,10 @@
                     throw new Error(data.error || "Unable to add stock.");
                 }
 
+                if (data.added) {
+                    currentStocks.push(data.stock);
+                    saveBrowserWatchlist();
+                }
                 addStockToList(data.stock);
                 addStockCard(data.stock);
                 addStockStatus.textContent = data.added ? `${data.stock.symbol} added to the list.` : `${data.stock.symbol} is already in the list.`;
@@ -285,6 +350,8 @@
             deleteStock(deleteButton.dataset.deleteStock, deleteButton);
         });
 
+        restoreBrowserWatchlist();
+
         refreshButton.addEventListener("click", async () => {
             setRefreshLoading(true);
 
@@ -295,6 +362,8 @@
                 }
 
                 const data = await response.json();
+                currentStocks = data.stocks;
+                saveBrowserWatchlist();
                 data.stocks.forEach(updateStockCard);
                 refreshStatus.textContent = `Last refreshed: ${data.refreshed_at}`;
             } catch (error) {

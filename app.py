@@ -295,7 +295,7 @@ def find_stock(symbol):
 
 
 def prepare_saved_stock(stock):
-    """Validate and normalize a stock entry loaded from disk."""
+    """Validate and normalize a stock entry loaded from disk or browser storage."""
     symbol = normalize_stock_symbol(str(stock.get("symbol", "")))
     if not symbol:
         return None
@@ -305,6 +305,25 @@ def prepare_saved_stock(stock):
     prepared_stock["symbol"] = symbol
     prepared_stock["anchor"] = stock.get("anchor") or build_stock_anchor(symbol)
     return prepared_stock
+
+
+def prepare_saved_stocks(stocks):
+    """Validate a saved stock list while preserving its chosen order."""
+    if not isinstance(stocks, list):
+        return []
+
+    prepared_stocks = []
+    seen_symbols = set()
+    for stock in stocks:
+        if not isinstance(stock, dict):
+            continue
+        prepared_stock = prepare_saved_stock(stock)
+        if not prepared_stock or prepared_stock["symbol"] in seen_symbols:
+            continue
+        prepared_stocks.append(prepared_stock)
+        seen_symbols.add(prepared_stock["symbol"])
+
+    return prepared_stocks
 
 
 def load_saved_stocks():
@@ -320,17 +339,7 @@ def load_saved_stocks():
     if not isinstance(saved_stocks, list):
         return
 
-    loaded_stocks = []
-    seen_symbols = set()
-    for stock in saved_stocks:
-        if not isinstance(stock, dict):
-            continue
-        prepared_stock = prepare_saved_stock(stock)
-        if not prepared_stock or prepared_stock["symbol"] in seen_symbols:
-            continue
-        loaded_stocks.append(prepared_stock)
-        seen_symbols.add(prepared_stock["symbol"])
-
+    loaded_stocks = prepare_saved_stocks(saved_stocks)
     if loaded_stocks:
         STOCKS[:] = loaded_stocks
 
@@ -415,6 +424,20 @@ def add_stock():
     STOCKS.append(new_stock)
     save_stocks()
     return jsonify({"stock": new_stock, "added": True}), 201
+
+
+@app.put("/stocks")
+def replace_stock_watchlist():
+    """Replace the server watchlist with the browser-saved watchlist after a redeploy."""
+    request_data = request.get_json(silent=True) if request.is_json else {}
+    stocks = request_data.get("stocks", []) if request_data else []
+    prepared_stocks = prepare_saved_stocks(stocks)
+
+    if not prepared_stocks:
+        return jsonify({"error": "At least one valid stock is required."}), 400
+
+    replace_stocks(prepared_stocks)
+    return jsonify({"stocks": STOCKS})
 
 
 @app.delete("/stocks/<path:symbol>")
