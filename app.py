@@ -1,5 +1,6 @@
 from copy import deepcopy
 from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 import json
 from json import JSONDecodeError
 from pathlib import Path
@@ -117,13 +118,24 @@ def fetch_yahoo_chart(symbol):
     return chart_data
 
 
+def format_market_time(timestamp):
+    """Format Yahoo's market timestamp in Eastern time for clear price timing."""
+    if not timestamp:
+        return "latest available market price"
+
+    market_time = datetime.fromtimestamp(timestamp, ZoneInfo("America/New_York"))
+    return market_time.strftime("%b %-d, %Y %-I:%M %p ET")
+
+
 def fetch_current_price(symbol):
     """Fetch the latest regular-market price from Yahoo Finance chart data."""
     chart_data = fetch_yahoo_chart(symbol)
     metadata = chart_data.get("meta", {})
-    formatted_price = format_price(metadata.get("regularMarketPrice"), metadata.get("currency"))
+    price = metadata.get("regularMarketPrice") or metadata.get("previousClose")
+    formatted_price = format_price(price, metadata.get("currency"))
     if formatted_price:
-        return f"{formatted_price} (latest available market price)"
+        market_time = format_market_time(metadata.get("regularMarketTime"))
+        return f"{formatted_price} ({market_time})"
     return None
 
 
@@ -177,24 +189,43 @@ def yahoo_news_items(symbol):
     return headlines
 
 
+def fetch_analyst_recommendation(symbol):
+    """Fetch Yahoo Finance analyst recommendation text when it is available."""
+    modules = "financialData,recommendationTrend"
+    url = f"https://query1.finance.yahoo.com/v10/finance/quoteSummary/{symbol}?modules={modules}"
+    response = requests.get(url, headers=REQUEST_HEADERS, timeout=REQUEST_TIMEOUT)
+    response.raise_for_status()
+    result = response.json()["quoteSummary"]["result"][0]
+    recommendation = result.get("financialData", {}).get("recommendationKey")
+    if recommendation:
+        return recommendation.replace("_", " ").title()
+
+    trends = result.get("recommendationTrend", {}).get("trend", [])
+    if trends:
+        latest_trend = trends[0]
+        ratings = {
+            "Buy": latest_trend.get("strongBuy", 0) + latest_trend.get("buy", 0),
+            "Hold": latest_trend.get("hold", 0),
+            "Sell": latest_trend.get("sell", 0) + latest_trend.get("strongSell", 0),
+        }
+        return max(ratings, key=ratings.get)
+    return None
+
+
 def recommendation_from_performance(general_performance):
     """Create a simple buy/hold/sell view when analyst consensus is unavailable."""
     if not general_performance:
         return "Hold"
     if "+" in general_performance and "1Y +" in general_performance:
-        return "Buy"
+        return "Buy (performance-based)"
     if "1Y -" in general_performance:
-        return "Sell"
-    return "Hold"
+        return "Sell (performance-based)"
+    return "Hold (performance-based)"
 
 
 def fetch_market_information(symbol, stock):
-    """Best-effort internet refresh for newly added stock symbols."""
+    """Best-effort live refresh for every stock symbol in the watchlist."""
     refreshed_stock = deepcopy(stock)
-    known_data = STOCK_REFRESH_DATA.get(normalize_stock_symbol(symbol))
-    if known_data:
-        refreshed_stock.update(deepcopy(known_data))
-        return refreshed_stock
 
     try:
         price = fetch_current_price(symbol)
@@ -222,7 +253,14 @@ def fetch_market_information(symbol, stock):
     except ElementTree.ParseError:
         refreshed_stock["latest_news"] = ["Latest-news refresh returned unreadable feed data."]
 
-    refreshed_stock["recommendation"] = recommendation_from_performance(refreshed_stock.get("general_performance", ""))
+    fallback_recommendation = recommendation_from_performance(refreshed_stock.get("general_performance", ""))
+    try:
+        refreshed_stock["recommendation"] = fetch_analyst_recommendation(symbol) or fallback_recommendation
+    except requests.RequestException:
+        refreshed_stock["recommendation"] = fallback_recommendation
+    except (KeyError, IndexError, TypeError, ValueError):
+        refreshed_stock["recommendation"] = fallback_recommendation
+
     return refreshed_stock
 
 
