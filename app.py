@@ -347,6 +347,20 @@ def replace_stocks(stocks):
     save_stocks()
 
 
+def delete_stock_by_symbol(symbol):
+    """Remove a stock from the watchlist and persist the updated list."""
+    normalized_symbol = normalize_stock_symbol(symbol)
+    remaining_stocks = [
+        stock for stock in STOCKS if normalize_stock_symbol(stock["symbol"]) != normalized_symbol
+    ]
+
+    if len(remaining_stocks) == len(STOCKS):
+        return None
+
+    replace_stocks(remaining_stocks)
+    return normalized_symbol
+
+
 def apply_refresh_data(stock):
     """Update a stock with refreshed market information."""
     refreshed_stock = fetch_market_information(stock["symbol"], stock)
@@ -401,6 +415,17 @@ def add_stock():
     STOCKS.append(new_stock)
     save_stocks()
     return jsonify({"stock": new_stock, "added": True}), 201
+
+
+@app.delete("/stocks/<path:symbol>")
+def delete_stock(symbol):
+    """Delete a stock symbol from the watchlist permanently."""
+    deleted_symbol = delete_stock_by_symbol(symbol)
+
+    if not deleted_symbol:
+        return jsonify({"error": "Stock symbol was not found."}), 404
+
+    return jsonify({"deleted": True, "symbol": deleted_symbol})
 
 
 if __name__ == "__main__":
