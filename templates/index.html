@@ -5,6 +5,33 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Snapshot of certain stocks</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .stock-list-scrollbar {
+            overflow-y: scroll;
+            scrollbar-color: #22d3ee #0f172a;
+            scrollbar-gutter: stable;
+            scrollbar-width: thin;
+        }
+
+        .stock-list-scrollbar::-webkit-scrollbar {
+            width: 12px;
+        }
+
+        .stock-list-scrollbar::-webkit-scrollbar-track {
+            background: #0f172a;
+            border-radius: 9999px;
+        }
+
+        .stock-list-scrollbar::-webkit-scrollbar-thumb {
+            background: #22d3ee;
+            border: 3px solid #0f172a;
+            border-radius: 9999px;
+        }
+
+        .stock-list-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #67e8f9;
+        }
+    </style>
 </head>
 <body class="min-h-screen bg-slate-950 text-slate-100">
     <main class="mx-auto max-w-7xl px-6 py-10">
@@ -31,7 +58,7 @@
                         <p id="add-stock-status" class="text-sm text-slate-400"></p>
                     </form>
                     <p class="mt-5 rounded-2xl border border-cyan-400/10 bg-cyan-400/5 px-4 py-3 text-sm text-slate-300">Click a symbol to jump to its details, or use the small red button to remove it permanently.</p>
-                    <nav class="mt-5 max-h-[55vh] overflow-y-auto pr-2 [direction:rtl] [scrollbar-color:#22d3ee_#0f172a] [scrollbar-width:thin]" aria-label="Scrollable stock list">
+                    <nav class="stock-list-scrollbar mt-5 max-h-[55vh] pr-2 [direction:rtl]" aria-label="Scrollable stock list">
                         <ul id="stock-list" class="space-y-3 [direction:ltr]">
                             {% for stock in stocks %}
                                 <li data-stock-list-item="{{ stock.symbol }}" class="flex items-center gap-2">
