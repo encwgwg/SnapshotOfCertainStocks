@@ -3,17 +3,20 @@ from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 import json
 from json import JSONDecodeError
+import re
 from pathlib import Path
 from xml.etree import ElementTree
 
 import requests
 from flask import Flask, jsonify, render_template, request
+from werkzeug.exceptions import HTTPException
 
 app = Flask(__name__)
 
 REQUEST_HEADERS = {"User-Agent": "Mozilla/5.0"}
 REQUEST_TIMEOUT = 8
 WATCHLIST_FILE = Path(__file__).with_name("watchlist_data.json")
+YAHOO_LOOKUP_URL = "https://ca.finance.yahoo.com/lookup/"
 
 
 STOCKS = [
@@ -94,6 +97,58 @@ STOCK_REFRESH_DATA["RCI-B.TO"] = {
     ],
     "recommendation": "Buy",
 }
+
+
+class YahooLookupError(HTTPException):
+    """Return a JSON-friendly error when Yahoo Finance lookup rejects a symbol."""
+
+    code = 400
+    description = "Yahoo Finance could not validate that stock symbol."
+
+
+def yahoo_lookup_error(message, status_code=400):
+    """Create a Yahoo lookup exception with a specific response status."""
+    error = YahooLookupError(description=message)
+    error.code = status_code
+    return error
+
+
+def yahoo_lookup_has_positive_result(html, symbol):
+    """Check Yahoo Canada's lookup result page for an exact quote link match."""
+    normalized_symbol = normalize_stock_symbol(symbol)
+
+    for href in re.findall(r'href=["\']([^"\']*/quote/[^"\']+)["\']', html):
+        quote_path = href.split("/quote/", 1)[-1].split("?", 1)[0].strip("/")
+        link_symbol = quote_path.split("/", 1)[0]
+        if normalize_stock_symbol(link_symbol) == normalized_symbol:
+            return True
+
+    return False
+
+
+def validate_stock_symbol_with_yahoo_lookup(symbol):
+    """Confirm a new symbol appears in Yahoo Canada's stock lookup results."""
+    try:
+        response = requests.get(
+            YAHOO_LOOKUP_URL,
+            params={"s": symbol},
+            headers=REQUEST_HEADERS,
+            timeout=REQUEST_TIMEOUT,
+        )
+        response.raise_for_status()
+    except requests.RequestException as error:
+        message = (
+            "Yahoo Finance Canada lookup returned an error while checking "
+            f"{symbol}: {error}. Please try again later."
+        )
+        raise yahoo_lookup_error(message, 502) from error
+
+    if not yahoo_lookup_has_positive_result(response.text, symbol):
+        message = (
+            f"{symbol} was not found in Yahoo Finance Canada lookup results. "
+            "Please check the symbol and try again."
+        )
+        raise yahoo_lookup_error(message, 400)
 
 
 def format_price(price, currency):
@@ -406,6 +461,12 @@ def refresh_stock_snapshot():
     return jsonify({"stocks": stocks, "refreshed_at": refreshed_at})
 
 
+@app.errorhandler(YahooLookupError)
+def handle_yahoo_lookup_error(error):
+    """Return Yahoo lookup errors as JSON for the add-stock pop-up."""
+    return jsonify({"error": error.description}), error.code
+
+
 @app.post("/stocks")
 def add_stock():
     """Add a new stock symbol to the in-memory watchlist."""
@@ -419,6 +480,8 @@ def add_stock():
     existing_stock = find_stock(normalized_symbol)
     if existing_stock:
         return jsonify({"stock": existing_stock, "added": False})
+
+    validate_stock_symbol_with_yahoo_lookup(normalized_symbol)
 
     new_stock = create_placeholder_stock(normalized_symbol)
     STOCKS.append(new_stock)
