@@ -7,29 +7,34 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         .stock-list-scrollbar {
-            overflow-y: scroll;
-            scrollbar-color: #22d3ee #0f172a;
-            scrollbar-gutter: stable;
-            scrollbar-width: thin;
+            overflow-y: auto;
+            overscroll-behavior: contain;
+            scrollbar-width: none;
         }
 
         .stock-list-scrollbar::-webkit-scrollbar {
-            width: 12px;
+            display: none;
         }
 
-        .stock-list-scrollbar::-webkit-scrollbar-track {
+        .stock-list-scrollbar-track {
             background: #0f172a;
+            border: 1px solid rgba(34, 211, 238, 0.35);
             border-radius: 9999px;
+            box-shadow: inset 0 0 8px rgba(8, 145, 178, 0.25);
         }
 
-        .stock-list-scrollbar::-webkit-scrollbar-thumb {
-            background: #22d3ee;
-            border: 3px solid #0f172a;
+        .stock-list-scrollbar-thumb {
+            background: linear-gradient(180deg, #67e8f9, #0891b2);
+            border: 2px solid #0f172a;
             border-radius: 9999px;
+            box-shadow: 0 0 12px rgba(34, 211, 238, 0.55);
+            cursor: grab;
+            min-height: 44px;
+            touch-action: none;
         }
 
-        .stock-list-scrollbar::-webkit-scrollbar-thumb:hover {
-            background: #67e8f9;
+        .stock-list-scrollbar-thumb:active {
+            cursor: grabbing;
         }
     </style>
 </head>
@@ -58,8 +63,11 @@
                         <p id="add-stock-status" class="text-sm text-slate-400"></p>
                     </form>
                     <p class="mt-5 rounded-2xl border border-cyan-400/10 bg-cyan-400/5 px-4 py-3 text-sm text-slate-300">Click a symbol to jump to its details, or use the small red button to remove it permanently.</p>
-                    <nav class="stock-list-scrollbar mt-5 max-h-[55vh] pr-2 [direction:rtl]" aria-label="Scrollable stock list">
-                        <ul id="stock-list" class="space-y-3 [direction:ltr]">
+                    <nav id="stock-list-scroll-region" class="stock-list-scrollbar relative mt-5 h-[55vh] pl-6 pr-2" aria-label="Scrollable stock list">
+                        <div class="stock-list-scrollbar-track absolute bottom-0 left-0 top-0 w-4" data-stock-scrollbar aria-hidden="true">
+                            <div class="stock-list-scrollbar-thumb absolute left-0 top-0 w-full" data-stock-scroll-thumb></div>
+                        </div>
+                        <ul id="stock-list" class="space-y-3">
                             {% for stock in stocks %}
                                 <li data-stock-list-item="{{ stock.symbol }}" class="flex items-center gap-2">
                                     <a href="#{{ stock.anchor }}" data-stock-link="{{ stock.symbol }}" class="flex flex-1 items-center justify-between rounded-xl border border-slate-800 bg-slate-950/70 px-4 py-3 font-semibold text-cyan-200 transition hover:border-cyan-400 hover:bg-cyan-400/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-cyan-300">
@@ -174,6 +182,9 @@
         const addStockStatus = document.getElementById("add-stock-status");
         const stockSymbolInput = document.getElementById("stock-symbol-input");
         const stockList = document.getElementById("stock-list");
+        const stockListScrollRegion = document.getElementById("stock-list-scroll-region");
+        const stockListScrollbar = document.querySelector("[data-stock-scrollbar]");
+        const stockListScrollThumb = document.querySelector("[data-stock-scroll-thumb]");
         const stockListItemTemplate = document.getElementById("stock-list-item-template");
         const stockCardTemplate = document.getElementById("stock-card-template");
         const stockInformationSection = document.querySelector('[aria-labelledby="stock-information-heading"]');
@@ -182,6 +193,7 @@
         const refreshStatus = document.getElementById("refresh-status");
         const watchlistStorageKey = "snapshot-of-certain-stocks.watchlist";
         let currentStocks = {{ stocks|tojson }};
+        let isDraggingStockListScrollbar = false;
 
         function saveBrowserWatchlist() {
             localStorage.setItem(watchlistStorageKey, JSON.stringify(currentStocks));
@@ -203,6 +215,7 @@
                 addStockToList(stock);
                 addStockCard(stock);
             });
+            updateStockListScrollbar();
         }
 
         async function syncServerWatchlist(stocks) {
@@ -255,6 +268,35 @@
             });
         }
 
+        // Keep the custom left-side scrollbar visible and synchronized with the hidden native scroller.
+        function updateStockListScrollbar() {
+            const scrollableHeight = stockListScrollRegion.scrollHeight - stockListScrollRegion.clientHeight;
+            const trackHeight = stockListScrollbar.clientHeight;
+            const thumbHeight = scrollableHeight > 0
+                ? Math.max((stockListScrollRegion.clientHeight / stockListScrollRegion.scrollHeight) * trackHeight, 44)
+                : trackHeight;
+            const maxThumbTop = Math.max(trackHeight - thumbHeight, 0);
+            const thumbTop = scrollableHeight > 0
+                ? (stockListScrollRegion.scrollTop / scrollableHeight) * maxThumbTop
+                : 0;
+
+            stockListScrollThumb.style.height = `${thumbHeight}px`;
+            stockListScrollThumb.style.transform = `translateY(${thumbTop}px)`;
+        }
+
+        function scrollStockListFromThumbPosition(pointerY) {
+            const trackRect = stockListScrollbar.getBoundingClientRect();
+            const thumbHeight = stockListScrollThumb.offsetHeight;
+            const maxThumbTop = Math.max(trackRect.height - thumbHeight, 0);
+            const requestedThumbTop = pointerY - trackRect.top - (thumbHeight / 2);
+            const thumbTop = Math.min(Math.max(requestedThumbTop, 0), maxThumbTop);
+            const scrollableHeight = stockListScrollRegion.scrollHeight - stockListScrollRegion.clientHeight;
+
+            stockListScrollRegion.scrollTop = maxThumbTop > 0
+                ? (thumbTop / maxThumbTop) * scrollableHeight
+                : 0;
+        }
+
         function addStockToList(stock) {
             if (document.querySelector(stockAttributeSelector("data-stock-link", stock.symbol))) {
                 return;
@@ -270,6 +312,7 @@
             deleteButton.dataset.deleteStock = stock.symbol;
             listItem.querySelector('[data-template-field="symbol"]').textContent = stock.symbol;
             stockList.appendChild(listItem);
+            requestAnimationFrame(updateStockListScrollbar);
         }
 
         function addStockCard(stock) {
@@ -325,6 +368,7 @@
                 currentStocks = currentStocks.filter((stock) => stock.symbol !== data.symbol);
                 saveBrowserWatchlist();
                 removeStockFromPage(data.symbol);
+                updateStockListScrollbar();
                 addStockStatus.textContent = `${data.symbol} deleted permanently from the stock list.`;
             } catch (error) {
                 deleteButton.disabled = false;
@@ -377,6 +421,28 @@
             deleteStock(deleteButton.dataset.deleteStock, deleteButton);
         });
 
+        stockListScrollRegion.addEventListener("scroll", updateStockListScrollbar);
+        window.addEventListener("resize", updateStockListScrollbar);
+        stockListScrollbar.addEventListener("pointerdown", (event) => {
+            event.preventDefault();
+            isDraggingStockListScrollbar = true;
+            stockListScrollbar.setPointerCapture(event.pointerId);
+            scrollStockListFromThumbPosition(event.clientY);
+        });
+        stockListScrollbar.addEventListener("pointermove", (event) => {
+            if (isDraggingStockListScrollbar) {
+                scrollStockListFromThumbPosition(event.clientY);
+            }
+        });
+        stockListScrollbar.addEventListener("pointerup", (event) => {
+            isDraggingStockListScrollbar = false;
+            stockListScrollbar.releasePointerCapture(event.pointerId);
+        });
+        stockListScrollbar.addEventListener("pointercancel", () => {
+            isDraggingStockListScrollbar = false;
+        });
+
+        updateStockListScrollbar();
         restoreBrowserWatchlist();
 
         refreshButton.addEventListener("click", async () => {
