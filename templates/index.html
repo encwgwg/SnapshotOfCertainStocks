@@ -31,8 +31,8 @@
                         <p id="add-stock-status" class="text-sm text-slate-400"></p>
                     </form>
                     <p class="mt-5 rounded-2xl border border-cyan-400/10 bg-cyan-400/5 px-4 py-3 text-sm text-slate-300">Click a symbol to jump to its details, or use the small red button to remove it permanently.</p>
-                    <nav class="mt-5">
-                        <ul id="stock-list" class="space-y-3">
+                    <nav class="mt-5 max-h-[55vh] overflow-y-auto pr-2 [direction:rtl] [scrollbar-color:#22d3ee_#0f172a] [scrollbar-width:thin]" aria-label="Scrollable stock list">
+                        <ul id="stock-list" class="space-y-3 [direction:ltr]">
                             {% for stock in stocks %}
                                 <li data-stock-list-item="{{ stock.symbol }}" class="flex items-center gap-2">
                                     <a href="#{{ stock.anchor }}" data-stock-link="{{ stock.symbol }}" class="flex flex-1 items-center justify-between rounded-xl border border-slate-800 bg-slate-950/70 px-4 py-3 font-semibold text-cyan-200 transition hover:border-cyan-400 hover:bg-cyan-400/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-cyan-300">
